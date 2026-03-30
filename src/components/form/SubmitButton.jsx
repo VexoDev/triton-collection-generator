@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import { handleConversion } from '../../lib/converter';
-import { downloadFiles, getAllFileContents } from '../../lib/files';
+import { downloadFiles, getAllFileContents, getIgnoredKeysFromLines } from '../../lib/files';
 
 const SubmitButton = ({
   prefix,
@@ -14,6 +14,7 @@ const SubmitButton = ({
   argsSyntax,
   argSyntax,
   ignoredKeys,
+  ignoredLinesRef,
   itemKeyFormat,
   ignoreArrays,
   levelDelimiter,
@@ -22,6 +23,9 @@ const SubmitButton = ({
   const onSubmit = async (event) => {
     event.preventDefault();
     const fileContents = await getAllFileContents(files);
+    const ignoredLines = ignoredLinesRef?.current?.ignoredLines ?? {};
+    const lineIgnoredKeys = getIgnoredKeysFromLines(fileContents, ignoredLines, levelDelimiter);
+    const mergedIgnoredKeys = [ignoredKeys, lineIgnoredKeys].filter(Boolean).join('\n');
     const result = handleConversion({
       prefix,
       variableRegex,
@@ -30,7 +34,7 @@ const SubmitButton = ({
       langSyntax,
       argsSyntax,
       argSyntax,
-      ignoredKeys,
+      ignoredKeys: mergedIgnoredKeys,
       itemKeyFormat,
       ignoreArrays,
       levelDelimiter,
@@ -61,6 +65,7 @@ SubmitButton.propTypes = {
   argsSyntax: PropTypes.string,
   argSyntax: PropTypes.string,
   ignoredKeys: PropTypes.string,
+  ignoredLinesRef: PropTypes.object,
   itemKeyFormat: PropTypes.string,
   ignoreArrays: PropTypes.bool,
   files: PropTypes.arrayOf(PropTypes.any),
@@ -75,6 +80,7 @@ SubmitButton.defaultProps = {
   argsSyntax: 'args',
   argSyntax: 'arg',
   ignoredKeys: '',
+  ignoredLinesRef: null,
   itemKeyFormat: 'preserve',
   ignoreArrays: false,
   files: [],

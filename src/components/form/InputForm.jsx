@@ -17,9 +17,10 @@ import {
   HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import FileUpload from './FileUpload';
+import FilePreviewPanel from './FilePreviewPanel';
 import Select from './Select';
 import SubmitButton from './SubmitButton';
 
@@ -117,6 +118,7 @@ const InputForm = () => {
   const [itemKeyFormat, setItemKeyFormat] = useState('preserve');
   const [ignoreArrays, setIgnoreArrays] = useState(false);
   const [files, setFiles] = useState([]);
+  const previewRef = useRef(null);
 
   const isCustomPlaceholders = outputType === 'triton_placeholders_custom';
 
@@ -267,6 +269,7 @@ const InputForm = () => {
         </AccordionDetails>
       </Accordion>
       <FileUpload setFiles={setFiles} />
+      <FilePreviewPanel ref={previewRef} files={files} />
       <SubmitButton
         prefix={prefix}
         variableRegex={variableRegex}
@@ -276,6 +279,7 @@ const InputForm = () => {
         argsSyntax={argsSyntax}
         argSyntax={argSyntax}
         ignoredKeys={ignoredKeys}
+        ignoredLinesRef={previewRef}
         itemKeyFormat={itemKeyFormat}
         ignoreArrays={ignoreArrays}
         levelDelimiter={levelDelimiter}
