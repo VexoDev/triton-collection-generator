@@ -74,7 +74,7 @@ const buildYamlKeyChain = (lines, lineIdx) => {
  * @param {string}   fileName
  * @param {string}   delimEscaped  Level delimiter, already regex-escaped
  */
-const getPatternForLine = (lines, lineIdx, fileName, delimEscaped) => {
+const getPatternForLine = (lines, lineIdx, fileName, delimEscaped, filterMode = 'blacklist') => {
   const line = lines[lineIdx];
   const ext = fileName.split('.').pop().toLowerCase();
 
@@ -109,7 +109,8 @@ const getPatternForLine = (lines, lineIdx, fileName, delimEscaped) => {
       || rest.startsWith('#');
 
     const fullPath = chain.map(escapeRegex).join(delimEscaped);
-    // Container: also match all child paths
+    // In whitelist mode, skip container keys — their wildcard would match whitelisted children
+    if (filterMode === 'whitelist' && isParent) return null;
     return isParent ? `${fullPath}(${delimEscaped}.+)?` : fullPath;
   }
 
@@ -121,6 +122,7 @@ const getPatternForLine = (lines, lineIdx, fileName, delimEscaped) => {
     const rest = m[2].trim().replace(/,$/, '').trim();
     const isParent = rest === '{' || rest === '[' || rest === '';
     const e = escapeRegex(key);
+    if (filterMode === 'whitelist' && isParent) return null;
     // JSON doesn't have reliable indentation-based path building here;
     // use a name-only pattern with optional prefix
     return isParent
@@ -154,7 +156,7 @@ export const getIgnoredKeysFromLines = (fileContents, ignoredLinesByFile, levelD
       // Ignore every line that is NOT in the toggled (whitelisted) set
       for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
         if (toggledSet.has(lineIdx)) continue;
-        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped);
+        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped, filterMode);
         if (pattern) patterns.add(pattern);
       }
     } else {
@@ -162,7 +164,7 @@ export const getIgnoredKeysFromLines = (fileContents, ignoredLinesByFile, levelD
       if (toggledSet.size === 0) continue;
       for (const lineIdx of toggledSet) {
         if (lineIdx >= lines.length) continue;
-        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped);
+        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped, filterMode);
         if (pattern) patterns.add(pattern);
       }
     }
