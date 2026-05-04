@@ -139,21 +139,32 @@ const getPatternForLine = (lines, lineIdx, fileName, delimEscaped) => {
  * @param {{ [fileName: string]: string }}        fileContents
  * @param {{ [fileName: string]: Set<number> }}   ignoredLinesByFile
  * @param {string}                                levelDelimiter  (default '.')
+ * @param {'blacklist'|'whitelist'}               filterMode      (default 'blacklist')
  * @returns {string}  Newline-separated regex patterns, ready to append to ignoredKeys
  */
-export const getIgnoredKeysFromLines = (fileContents, ignoredLinesByFile, levelDelimiter = '.') => {
+export const getIgnoredKeysFromLines = (fileContents, ignoredLinesByFile, levelDelimiter = '.', filterMode = 'blacklist') => {
   const patterns = new Set();
   const delimEscaped = escapeRegex(levelDelimiter);
 
   for (const [fileName, content] of Object.entries(fileContents)) {
-    const ignoredSet = ignoredLinesByFile[fileName];
-    if (!ignoredSet || ignoredSet.size === 0) continue;
-
+    const toggledSet = ignoredLinesByFile[fileName] ?? new Set();
     const lines = content.split('\n');
-    for (const lineIdx of ignoredSet) {
-      if (lineIdx >= lines.length) continue;
-      const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped);
-      if (pattern) patterns.add(pattern);
+
+    if (filterMode === 'whitelist') {
+      // Ignore every line that is NOT in the toggled (whitelisted) set
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        if (toggledSet.has(lineIdx)) continue;
+        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped);
+        if (pattern) patterns.add(pattern);
+      }
+    } else {
+      // Blacklist: ignore lines that ARE in the toggled set
+      if (toggledSet.size === 0) continue;
+      for (const lineIdx of toggledSet) {
+        if (lineIdx >= lines.length) continue;
+        const pattern = getPatternForLine(lines, lineIdx, fileName, delimEscaped);
+        if (pattern) patterns.add(pattern);
+      }
     }
   }
 

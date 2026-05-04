@@ -24,7 +24,8 @@ const SubmitButton = ({
     event.preventDefault();
     const fileContents = await getAllFileContents(files);
     const ignoredLines = ignoredLinesRef?.current?.ignoredLines ?? {};
-    const lineIgnoredKeys = getIgnoredKeysFromLines(fileContents, ignoredLines, levelDelimiter);
+    const filterMode = ignoredLinesRef?.current?.filterMode ?? 'blacklist';
+    const lineIgnoredKeys = getIgnoredKeysFromLines(fileContents, ignoredLines, levelDelimiter, filterMode);
     const mergedIgnoredKeys = [ignoredKeys, lineIgnoredKeys].filter(Boolean).join('\n');
     const result = handleConversion({
       prefix,

@@ -1,4 +1,5 @@
 import {
+  CheckBox as CheckBoxIcon,
   CheckBoxOutlineBlank as EmptyBoxIcon,
   DisabledByDefault as XBoxIcon,
 } from '@mui/icons-material';
@@ -16,14 +17,45 @@ const isCommentLine = (line) => {
   return t.startsWith('#') || t.startsWith('!') || t.startsWith('//');
 };
 
-// Memoized — only re-renders when its own isIgnored prop changes
-const LineRow = React.memo(function LineRow({ lineNumber, line, isIgnored, fileName, idx, onToggle }) {
+// Memoized — only re-renders when its own isIgnored/filterMode props change
+const LineRow = React.memo(function LineRow({ lineNumber, line, isIgnored, filterMode, fileName, idx, onToggle }) {
+  const isWhitelist = filterMode === 'whitelist';
+  // In blacklist mode: toggled lines are excluded. In whitelist mode: toggled lines are included.
+  const appearsExcluded = isWhitelist ? !isIgnored : isIgnored;
+
+  let icon, iconColor, iconHoverColor, title;
+  if (isWhitelist) {
+    if (isIgnored) {
+      icon = <CheckBoxIcon />;
+      iconColor = 'success.light';
+      iconHoverColor = 'success.main';
+      title = 'Remove from whitelist';
+    } else {
+      icon = <XBoxIcon />;
+      iconColor = 'rgba(255,255,255,0.18)';
+      iconHoverColor = 'rgba(255,255,255,0.55)';
+      title = 'Add to whitelist';
+    }
+  } else {
+    if (isIgnored) {
+      icon = <XBoxIcon />;
+      iconColor = 'error.light';
+      iconHoverColor = 'error.main';
+      title = 'Include in generation';
+    } else {
+      icon = <EmptyBoxIcon />;
+      iconColor = 'rgba(255,255,255,0.18)';
+      iconHoverColor = 'rgba(255,255,255,0.55)';
+      title = 'Exclude from generation';
+    }
+  }
+
   return (
     <Box
       sx={{
         display: 'flex',
         alignItems: 'flex-start',
-        opacity: isIgnored ? 0.28 : 1,
+        opacity: appearsExcluded ? 0.28 : 1,
         transition: 'opacity 0.12s',
         '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
       }}
@@ -31,21 +63,21 @@ const LineRow = React.memo(function LineRow({ lineNumber, line, isIgnored, fileN
       <IconButton
         onClick={() => onToggle(fileName, idx)}
         size='small'
-        title={isIgnored ? 'Include in generation' : 'Exclude from generation'}
+        title={title}
         sx={{
           p: '2px',
           mx: '4px',
           mt: '2px',
           flexShrink: 0,
-          color: isIgnored ? 'error.light' : 'rgba(255,255,255,0.18)',
+          color: iconColor,
           '&:hover': {
-            color: isIgnored ? 'error.main' : 'rgba(255,255,255,0.55)',
+            color: iconHoverColor,
             bgcolor: 'transparent',
           },
           '& .MuiSvgIcon-root': { fontSize: '1.25rem' },
         }}
       >
-        {isIgnored ? <XBoxIcon /> : <EmptyBoxIcon />}
+        {icon}
       </IconButton>
       <Typography
         component='span'
@@ -73,8 +105,8 @@ const LineRow = React.memo(function LineRow({ lineNumber, line, isIgnored, fileN
           wordBreak: 'break-all',
           lineHeight: '1.65em',
           cursor: 'pointer',
-          color: isIgnored ? 'text.disabled' : 'text.primary',
-          textDecoration: isIgnored ? 'line-through' : 'none',
+          color: appearsExcluded ? 'text.disabled' : 'text.primary',
+          textDecoration: appearsExcluded ? 'line-through' : 'none',
         }}
       >
         {line || ' '}
@@ -88,8 +120,9 @@ const FilePreviewPanel = forwardRef(function FilePreviewPanel({ files }, ref) {
   const [fileContents, setFileContents] = useState({});
   const [ignoredLines, setIgnoredLines] = useState({});
   const [hideComments, setHideComments] = useState(false);
+  const [filterMode, setFilterMode] = useState('blacklist');
 
-  useImperativeHandle(ref, () => ({ ignoredLines }), [ignoredLines]);
+  useImperativeHandle(ref, () => ({ ignoredLines, filterMode }), [ignoredLines, filterMode]);
 
   useEffect(() => {
     const newContents = {};
@@ -156,6 +189,22 @@ const FilePreviewPanel = forwardRef(function FilePreviewPanel({ files }, ref) {
           ))}
         </Tabs>
         <Chip
+          label={filterMode === 'whitelist' ? 'Whitelist' : 'Blacklist'}
+          size='small'
+          clickable
+          variant='filled'
+          onClick={() => setFilterMode((m) => (m === 'blacklist' ? 'whitelist' : 'blacklist'))}
+          sx={{
+            mr: 0.5,
+            ml: 1,
+            fontSize: '0.7rem',
+            height: 22,
+            flexShrink: 0,
+            bgcolor: filterMode === 'whitelist' ? 'success.dark' : 'error.dark',
+            color: 'common.white',
+          }}
+        />
+        <Chip
           label='# comments'
           size='small'
           clickable
@@ -163,7 +212,7 @@ const FilePreviewPanel = forwardRef(function FilePreviewPanel({ files }, ref) {
           onClick={() => setHideComments((v) => !v)}
           sx={{
             mr: 1.5,
-            ml: 1,
+            ml: 0.5,
             fontSize: '0.7rem',
             height: 22,
             flexShrink: 0,
@@ -190,6 +239,7 @@ const FilePreviewPanel = forwardRef(function FilePreviewPanel({ files }, ref) {
               lineNumber={idx + 1}
               line={line}
               isIgnored={ignored.has(idx)}
+              filterMode={filterMode}
               fileName={activeFile.name}
               idx={idx}
               onToggle={handleToggle}
